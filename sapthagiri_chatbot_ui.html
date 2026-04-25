@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sapthagiri Chatbot</title>
+  <style>
+    body {margin: 0;height: 100vh;display: flex;justify-content: center;align-items: center;background-color: #f7fafc;font-family: 'Inter', sans-serif;}
+    .chat-container {display: flex;flex-direction: column;width: 100%;max-width: 450px;height: 80vh;background-color: white;border-radius: 1.5rem;box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);overflow: hidden;}
+    .chat-header {background-color: #2d3748;color: white;text-align: center;padding: 1rem;font-size: 1.25rem;font-weight: 600;}
+    .chat-messages {flex: 1;padding: 1rem;overflow-y: auto;background-color: #edf2f7;display: flex;flex-direction: column;gap: 0.75rem;}
+    .message-bubble {max-width: 80%;padding: 0.75rem 1rem;border-radius: 1.25rem;line-height: 1.4;font-size: 0.95rem;box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);}
+    .bot-message {background-color: white;color: #2d3748;align-self: flex-start;border-bottom-left-radius: 0.3rem;}
+    .user-message {background-color: #48bb78;color: white;align-self: flex-end;border-bottom-right-radius: 0.3rem;}
+    .typing-indicator {font-size: 0.8rem;color: #718096;font-style: italic;padding-left: 0.5rem;display: none;}
+    .chat-input-area {display: flex;align-items: center;padding: 0.75rem;border-top: 1px solid #e2e8f0;background-color: white;}
+    .chat-input-area textarea {flex: 1;resize: none;border: 1px solid #e2e8f0;border-radius: 2rem;padding: 0.6rem 1rem;font-size: 1rem;outline: none;transition: border-color 0.2s ease;}
+    .chat-input-area textarea:focus {border-color: #48bb78;}
+    .send-button {background-color: #48bb78;color: white;border: none;border-radius: 50%;width: 2.8rem;height: 2.8rem;display: flex;justify-content: center;align-items: center;font-size: 1.2rem;margin-left: 0.5rem;cursor: pointer;transition: background 0.2s ease;}
+    .send-button:hover {background-color: #38a169;}
+  </style>
+</head>
+<body>
+  <div class="chat-container">
+    <div class="chat-header">Sapthagiri</div>
+    <div class="chat-messages" id="chat-messages">
+      <div class="message-bubble bot-message">Hello! My name is Sapthagiri. How can I assist you today?</div>
+      <div class="typing-indicator" id="typing-indicator">Sapthagiri is typing...</div>
+    </div>
+    <div class="chat-input-area">
+      <textarea id="user-input" placeholder="Type your message..." rows="1"></textarea>
+      <button id="send-button" class="send-button">&#x27A4;</button>
+    </div>
+  </div>
+  <script>
+    const chatMessages = document.getElementById('chat-messages');
+    const typingIndicator = document.getElementById('typing-indicator');
+    const userInput = document.getElementById('user-input');
+    const sendButton = document.getElementById('send-button');
+
+    function createMessage(message, sender) {
+      // Remove any * marks from responses
+      const cleanMessage = message.replace(/\*/g, '');
+      const bubble = document.createElement('div');
+      bubble.classList.add('message-bubble', sender === 'user' ? 'user-message' : 'bot-message');
+      bubble.textContent = cleanMessage;
+      chatMessages.appendChild(bubble);
+      chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+
+    async function generateGeminiResponse(prompt) {
+      const systemPrompt = "You are a precise chatbot named Sapthagiri. Provide short, clear answers. Never use asterisks. If asked about the developer, say: The developer of Sapthagiri is Spoorthi.";
+      const apiKey = "AIzaSyDMPx3XLWVQHjmpV6Cwi39pXrxwSlpGgO0";
+      const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
+      try {
+        typingIndicator.style.display = 'block';
+        const response = await fetch(apiUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: prompt }] }],
+            systemInstruction: { parts: [{ text: systemPrompt }] },
+          })
+        });
+        typingIndicator.style.display = 'none';
+        if (!response.ok) {
+          return `Error: ${response.status} - Try again later.`;
+        }
+        const result = await response.json();
+        return result?.candidates?.[0]?.content?.parts?.[0]?.text || 'No response generated.';
+      } catch {
+        typingIndicator.style.display = 'none';
+        return 'Network error. Please check your connection.';
+      }
+    }
+
+    async function sendMessage() {
+      const userText = userInput.value.trim();
+      if (!userText) return;
+      createMessage(userText, 'user');
+      userInput.value = '';
+      const botResponse = await generateGeminiResponse(userText);
+      createMessage(botResponse, 'bot');
+    }
+
+    sendButton.addEventListener('click', sendMessage);
+    userInput.addEventListener('keypress', e => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        sendMessage();
+      }
+    });
+  </script>
+</body>
+</html>
